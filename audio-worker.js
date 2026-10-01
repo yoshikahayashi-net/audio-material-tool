@@ -4,7 +4,7 @@ env.allowLocalModels = false;
 env.allowRemoteModels = true;
 env.useBrowserCache = true;
 
-const MODEL = "onnx-community/lite-whisper-large-v3-turbo-acc-ONNX";
+const MODEL = "onnx-community/whisper-large-v3-turbo";
 let transcriber = null;
 
 function send(type, payload) {
@@ -68,7 +68,7 @@ self.onmessage = async function(event) {
     );
 
     const segments = [];
-    const BATCH_SIZE = 2;
+    const BATCH_SIZE = 1;
 
     for (let batchStart = 0; batchStart < totalChunks; batchStart += BATCH_SIZE) {
       const inputs = [];
@@ -134,8 +134,13 @@ self.onmessage = async function(event) {
 
     send("complete", { segments });
   } catch (error) {
+    let detail = "";
+    if (error && error.stack) detail = error.stack;
+    else if (typeof error === "number") detail = "数値エラーコード: " + error;
+    else if (error && error.message) detail = error.message;
+    else detail = String(error);
     send("error", {
-      message: error && error.message ? error.message : String(error)
+      message: "音声認識モデルの処理に失敗しました。 " + detail
     });
   }
 };
