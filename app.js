@@ -71,7 +71,7 @@ fileInput.addEventListener("change", function() {
 
 function getWorker() {
   if (worker) return worker;
-  worker = new Worker("./audio-worker.js?v=20261001-16", { type: "module" });
+  worker = new Worker("./audio-worker.js?v=20261001-17", { type: "module" });
   return worker;
 }
 
