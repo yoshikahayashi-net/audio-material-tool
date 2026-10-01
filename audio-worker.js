@@ -95,9 +95,7 @@ self.onmessage = async function(event) {
       let parts;
       try {
         parts = await pipe(inputs, {
-          return_timestamps: false,
-          language: "japanese",
-          task: "transcribe"
+          return_timestamps: false
         });
       } catch (batchError) {
         send("batch-fallback", {
@@ -106,9 +104,7 @@ self.onmessage = async function(event) {
         parts = [];
         for (const input of inputs) {
           parts.push(await pipe(input, {
-            return_timestamps: false,
-            language: "japanese",
-            task: "transcribe"
+            return_timestamps: false
           }));
         }
       }
