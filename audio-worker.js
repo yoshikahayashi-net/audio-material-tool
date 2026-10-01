@@ -57,6 +57,7 @@ self.onmessage = async function(event) {
 
     const sampleRate = data.sampleRate || 16000;
     const audio = new Float32Array(data.audio);
+    const useWebGPU = !!(self.navigator && self.navigator.gpu);
     const chunkSeconds = 30;
     const overlapSeconds = 2;
     const chunkSamples = chunkSeconds * sampleRate;
@@ -68,7 +69,7 @@ self.onmessage = async function(event) {
     );
 
     const segments = [];
-    const BATCH_SIZE = webgpu ? 2 : 1;
+    const BATCH_SIZE = useWebGPU ? 2 : 1;
 
     for (let batchStart = 0; batchStart < totalChunks; batchStart += BATCH_SIZE) {
       const inputs = [];
