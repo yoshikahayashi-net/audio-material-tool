@@ -4,7 +4,7 @@ env.allowLocalModels = false;
 env.allowRemoteModels = true;
 env.useBrowserCache = true;
 
-const MODEL = "onnx-community/whisper-large-v3-turbo";
+const MODEL = "onnx-community/kotoba-whisper-v2.2-ONNX";
 let transcriber = null;
 
 function send(type, payload) {
@@ -22,7 +22,7 @@ async function getTranscriber() {
   const make = async (device) => {
     return await pipeline("automatic-speech-recognition", MODEL, {
       device,
-      dtype: device === "webgpu" ? "q4f16" : "q8",
+      dtype: device === "webgpu" ? { encoder_model: "fp16", decoder_model_merged: "q4f16" } : "q8",
       progress_callback: function(p) {
         if (!p) return;
         if (p.status === "progress" && typeof p.progress === "number") {
@@ -68,7 +68,7 @@ self.onmessage = async function(event) {
     );
 
     const segments = [];
-    const BATCH_SIZE = 1;
+    const BATCH_SIZE = webgpu ? 2 : 1;
 
     for (let batchStart = 0; batchStart < totalChunks; batchStart += BATCH_SIZE) {
       const inputs = [];
