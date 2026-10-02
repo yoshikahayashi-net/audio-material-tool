@@ -71,7 +71,7 @@ fileInput.addEventListener("change", function() {
 
 function getWorker() {
   if (worker) return worker;
-  worker = new Worker("./audio-worker.js?v=20261001-18", { type: "module" });
+  worker = new Worker("./audio-worker.js?v=20261001-24", { type: "module" });
   return worker;
 }
 
@@ -317,7 +317,7 @@ runBtn.addEventListener("click", async function() {
     const duration = audio.duration;
     const sampleRate = 16000;
     const chunkSeconds = 30;
-    const overlapSeconds = 2;
+    const overlapSeconds = 1;
     const totalChunks = Math.max(
       1,
       Math.ceil(Math.max(0, audio.mono.length - overlapSeconds * sampleRate) /
@@ -335,12 +335,10 @@ runBtn.addEventListener("click", async function() {
     }
 
     const raw = normalize(rawText || "");
-    const chars = raw.replace(/\s/g, "");
-    const repeated = chars.length >= 80
-      ? Math.max(...Array.from(new Set(chars)).map(function(ch){ return chars.split(ch).length - 1; })) / chars.length
-      : 0;
-    if (!raw || repeated > 0.65) {
-      throw new Error("文字起こし結果が不自然です。音声を正しく認識できていない可能性があります。");
+    // Do not discard a completed transcription based on a brittle
+    // character-frequency heuristic. Keep the completed transcript.
+    if (!raw) {
+      throw new Error("文字起こし結果が空でした。音声を認識できなかった可能性があります。");
     }
     lastRaw = raw;
     lastSegments = segments;
