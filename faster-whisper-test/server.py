@@ -13,6 +13,7 @@ BASE_DIR = Path(__file__).resolve().parent
 HOST = "127.0.0.1"
 PORT = int(os.environ.get("FW_PORT", "7860"))
 MODEL_NAME = os.environ.get("FW_MODEL", "turbo")
+CPU_THREADS = max(4, min(8, os.cpu_count() or 4))
 
 app = Flask(__name__, static_folder=str(BASE_DIR), static_url_path="")
 app.config["MAX_CONTENT_LENGTH"] = 2 * 1024 * 1024 * 1024
@@ -53,7 +54,7 @@ def load_model():
             MODEL_NAME,
             device="cuda",
             compute_type="float16",
-            cpu_threads=4,
+            cpu_threads=CPU_THREADS,
         )
         _device = "GPU"
         _compute_type = "float16"
@@ -136,6 +137,7 @@ def build_output(groups, raw, elapsed, audio_duration, device, compute_type, bat
         f"エンジン：faster-whisper / {MODEL_NAME}",
         f"実行：{device} / {compute_type}",
         f"Batch：{batch_size}",
+        f"CPUスレッド：{CPU_THREADS}",
         f"音声長：{audio_duration:.1f}秒",
         f"文字起こし：{elapsed:.1f}秒",
         f"速度：約{speed:.2f}倍速",
@@ -198,7 +200,7 @@ def transcribe():
             batch_size=batch_size,
             language="ja",
             task="transcribe",
-            beam_size=5,
+            beam_size=(3 if batch_size >= 8 else 5),
             vad_filter=True,
             condition_on_previous_text=True,
         )
