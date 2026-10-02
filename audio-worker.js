@@ -74,7 +74,7 @@ self.onmessage = async function(event) {
     // 日本語音声での言語判定を毎区間やり直さないよう固定する。
     const inferenceOptions = {
       return_timestamps: false,
-      language: "japanese",
+      language: "ja",
       task: "transcribe"
     };
 
