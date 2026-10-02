@@ -39,5 +39,6 @@ if errorlevel 1 (
 )
 
 echo [3/3] Starting faster-whisper local server...
+start "" /min cmd /c "timeout /t 2 /nobreak >nul & start http://127.0.0.1:7860/"
 ".venv\Scripts\python.exe" server.py
 pause
