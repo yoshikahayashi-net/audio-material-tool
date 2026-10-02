@@ -60,17 +60,46 @@ async function waitHealth(){
   try{
     const r = await fetch("/api/health");
     const d = await r.json();
-    if(d.loaded) setStatus("モデル準備済み：" + d.device + " / " + d.compute_type, "ok");
+    if(d.loaded){
+      setStatus("モデル準備済み：" + d.device + " / " + d.compute_type, "ok");
+    }
   }catch(_){}
 }
 waitHealth();
+
+let progressTimer = null;
+function startProgress(){
+  const started = performance.now();
+  let preparingShown = false;
+  progressTimer = setInterval(async () => {
+    try{
+      const r = await fetch("/api/health");
+      const d = await r.json();
+      const sec = Math.floor((performance.now() - started) / 1000);
+      if(d.loaded){
+        setStatus("モデル準備完了。文字起こし中… " + sec + "秒");
+      }else{
+        preparingShown = true;
+        setStatus("モデル準備中… " + sec + "秒（初回のみ）");
+      }
+    }catch(_){
+      const sec = Math.floor((performance.now() - started) / 1000);
+      if(!preparingShown) setStatus("モデルを起動中… " + sec + "秒");
+    }
+  }, 1000);
+}
+function stopProgress(){
+  if(progressTimer) clearInterval(progressTimer);
+  progressTimer = null;
+}
 
 run.addEventListener("click", async () => {
   const file = audio.files[0];
   if(!file) return;
 
   run.disabled = true;
-  setStatus("faster-whisperで処理中… 初回はモデル準備に時間がかかります。");
+  setStatus("モデル準備・文字起こしを開始…");
+  startProgress();
   const form = new FormData();
   form.append("audio", file);
   form.append("finish_keywords", $("finish").value);
@@ -101,6 +130,7 @@ run.addEventListener("click", async () => {
   }catch(e){
     setStatus("処理に失敗しました：" + e.message, "error");
   }finally{
+    stopProgress();
     run.disabled = false;
   }
 });
