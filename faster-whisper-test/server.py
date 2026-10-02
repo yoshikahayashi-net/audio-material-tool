@@ -13,7 +13,7 @@ BASE_DIR = Path(__file__).resolve().parent
 HOST = "127.0.0.1"
 PORT = int(os.environ.get("FW_PORT", "7860"))
 MODEL_NAME = os.environ.get("FW_MODEL", "turbo")
-CPU_THREADS = max(4, min(8, os.cpu_count() or 4))
+CPU_THREADS = 4
 
 app = Flask(__name__, static_folder=str(BASE_DIR), static_url_path="")
 app.config["MAX_CONTENT_LENGTH"] = 2 * 1024 * 1024 * 1024
@@ -192,15 +192,16 @@ def transcribe():
         set_progress("model", 0, 0, 0, "モデル準備中…")
         _, batched_model, device, compute_type = load_model()
 
-        # Use the selected batch size on CPU too.
-        # Batch 4 is the standard setting; Batch 8 is the high-speed/high-load setting.
+        # CPUではBatch 4を上限にして、処理負荷が急増しないようにする。
+        if device == "CPU":
+            batch_size = min(batch_size, 4)
         started = time.perf_counter()
         segments, info = batched_model.transcribe(
             str(temp_path),
             batch_size=batch_size,
             language="ja",
             task="transcribe",
-            beam_size=(3 if batch_size >= 8 else 5),
+            beam_size=5,
             vad_filter=True,
             condition_on_previous_text=True,
         )
