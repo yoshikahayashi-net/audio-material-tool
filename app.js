@@ -350,9 +350,14 @@ runBtn.addEventListener("click", async function() {
     const repeated = chars.length >= 80
       ? Math.max(...Array.from(new Set(chars)).map(function(ch){ return chars.split(ch).length - 1; })) / chars.length
       : 0;
-    if (!raw || repeated > 0.65) {
-      throw new Error("文字起こし結果が不自然です。音声を正しく認識できていない可能性があります。");
-    }
+
+    // 認識結果を「不自然」と判定しても、ここで処理全体を失敗扱いにはしない。
+    // 人が内容を確認できるよう、結果はそのまま出力して警告だけ表示する。
+    const qualityWarning = !raw
+      ? "文字起こし結果が空でした。音声内容を認識できていない可能性があります。"
+      : repeated > 0.85
+        ? "文字起こし結果に強い繰り返しが見られます。内容を確認してください。"
+        : "";
     lastRaw = raw;
     lastSegments = segments;
     const groups = classifySegments(
@@ -392,10 +397,14 @@ runBtn.addEventListener("click", async function() {
     render();
     results.style.display = "block";
     setProgress(100);
-    setStatus("⑤ 完了。音声 " + totalChunks + "区間を資料化しました。総合 " + totalLabel +
+    setStatus(
+      (qualityWarning ? "⑤ 完了（要確認）｜" + qualityWarning + " " : "⑤ 完了。") +
+      "音声 " + totalChunks + "区間を資料化しました。総合 " + totalLabel +
       " ／ 文字起こし " + transcribeLabel + "・" + speedLabel +
       " ／ 仕上 " + groups.finish.length + "件 ／ ショット " + groups.shot.length +
-      "件 ／ 未分類 " + groups.unknown.length + "件", "ok");
+      "件 ／ 未分類 " + groups.unknown.length + "件",
+      qualityWarning ? "error" : "ok"
+    );
   } catch (err) {
         setProcessing(false);
     console.error(err);
