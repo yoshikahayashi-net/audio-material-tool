@@ -23,6 +23,17 @@ _device = None
 _compute_type = None
 _loading = False
 _load_error = None
+_progress = {"phase":"idle","percent":0,"processed":0.0,"duration":0.0,"message":"待機中"}
+
+def set_progress(phase, percent=0, processed=0.0, duration=0.0, message=""):
+    _progress.update({
+        "phase": phase,
+        "percent": max(0, min(100, int(percent))),
+        "processed": float(processed),
+        "duration": float(duration),
+        "message": message,
+    })
+
 
 def load_model():
     global _model, _batched_model, _device, _compute_type, _loading, _load_error
@@ -32,6 +43,7 @@ def load_model():
     _loading = True
     _load_error = None
     _device = "準備中"
+    set_progress("model", 0, 0, 0, "モデル準備中…")
     _compute_type = None
 
     # Prefer GPU. If the local CUDA/cuDNN stack is unavailable,
@@ -146,7 +158,14 @@ def health():
         "device": _device,
         "compute_type": _compute_type,
         "error": _load_error,
+        "progress": _progress,
     })
+
+
+@app.get("/api/progress")
+def progress():
+    return jsonify(_progress)
+
 
 
 @app.post("/api/transcribe")
@@ -168,6 +187,7 @@ def transcribe():
 
     try:
         audio.save(temp_path)
+        set_progress("model", 0, 0, 0, "モデル準備中…")
         _, batched_model, device, compute_type = load_model()
 
         # Keep CPU mode lightweight. Batching is reserved for GPU runs.
@@ -185,16 +205,30 @@ def transcribe():
             condition_on_previous_text=True,
         )
 
+        total_duration = float(info.duration or 0)
+        set_progress("transcribing", 0, 0, total_duration, "文字起こし中… 0%")
+
         materialized = []
         for seg in segments:
             text = normalize(seg.text)
+            seg_start = float(seg.start)
+            seg_end = float(seg.end)
             if text:
                 materialized.append({
-                    "start": float(seg.start),
-                    "end": float(seg.end),
+                    "start": seg_start,
+                    "end": seg_end,
                     "text": text,
                 })
+            pct = (seg_end / total_duration * 100) if total_duration > 0 else 0
+            set_progress(
+                "transcribing",
+                pct,
+                min(seg_end, total_duration),
+                total_duration,
+                f"文字起こし中… {int(pct)}%",
+            )
 
+        set_progress("transcribing", 100, total_duration, total_duration, "文字起こし完了")
         elapsed = time.perf_counter() - started
         raw = normalize(" ".join(x["text"] for x in materialized))
         groups = classify_segments(materialized, finish_keys, shot_keys)
@@ -225,6 +259,7 @@ def transcribe():
             "output": output,
         })
     except Exception as exc:
+        set_progress("error", _progress.get("percent", 0), _progress.get("processed", 0), _progress.get("duration", 0), f"処理に失敗：{type(exc).__name__}: {exc}")
         return jsonify({
             "ok": False,
             "error": f"{type(exc).__name__}: {exc}",
