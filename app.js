@@ -71,7 +71,7 @@ fileInput.addEventListener("change", function() {
 
 function getWorker() {
   if (worker) return worker;
-  worker = new Worker("./audio-worker.js?v=20261001-18", { type: "module" });
+  worker = new Worker("./audio-worker.js?v=20261002-01", { type: "module" });
   return worker;
 }
 
@@ -122,8 +122,13 @@ function transcribeWithWorker(audio) {
         const nextStart = Math.min(data.done + 1, data.total);
         const nextEnd = Math.min(data.batchEnd, data.total);
         setProgress(Math.min(92, 30 + (data.done / data.total) * 62));
+        const parallelCount = data.actualCount || (data.batchSize || (data.batchEnd - data.done));
+        const modeLabel = (data.batchSize || 1) > 1
+          ? parallelCount + "区間を同時処理中"
+          : "1区間ずつ処理中";
+        const skipLabel = data.skipped ? "｜無音 " + data.skipped + "区間スキップ" : "";
         setStatus("③ 文字起こし中… " + data.done + " / " + data.total + " 区間完了｜" +
-          nextStart + "〜" + nextEnd + "区間を同時処理中");
+          nextStart + "〜" + nextEnd + "区間｜" + modeLabel + skipLabel);
         return;
       }
 
