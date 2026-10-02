@@ -6,7 +6,7 @@
 <title>faster-whisper 比較版</title>
 <style>
 :root{--blue:#168BCB;--blue2:#0D6DA6;--sky:#EAF9FE;--green:#50C36A;--ink:#173244;--muted:#6B8090;--line:#CFE3ED;--bg:#F3FAFD;--shadow:0 12px 30px rgba(18,91,125,.12)}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP","Yu Gothic",sans-serif}.wrap{max-width:920px;margin:auto;padding:24px 18px 48px}.hero{background:linear-gradient(135deg,#0f73ad,#168bcb);color:#fff;border-radius:22px;padding:24px 22px;box-shadow:var(--shadow)}.kicker{font-size:11px;letter-spacing:.12em;font-weight:900;opacity:.82}.title{font-size:28px;font-weight:900;margin-top:6px}.sub{margin-top:8px;font-size:13px;line-height:1.65;opacity:.95}.card{margin-top:16px;background:#fff;border:1px solid var(--line);border-radius:18px;padding:18px;box-shadow:var(--shadow)}label{font-size:12px;font-weight:900;color:var(--blue2)}.file{width:100%;padding:12px;margin-top:8px;border:1px dashed #9fc9dc;border-radius:14px;background:#F8FCFE}.row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:14px}.field{border:1px solid var(--line);border-radius:12px;padding:10px}.field input,.field select{width:100%;margin-top:7px;border:1px solid var(--line);border-radius:8px;padding:8px;font:inherit;font-size:12px}.btn{width:100%;height:48px;margin-top:14px;border:0;border-radius:13px;background:var(--blue);color:#fff;font-weight:900;cursor:pointer}.btn:disabled{opacity:.55;cursor:not-allowed}.status{margin-top:12px;padding:11px 12px;border-radius:12px;background:#F2F8FB;color:#557382;font-size:12px;line-height:1.6}.ok{background:#F0FFF3;color:#367947;border:1px solid #BDE3C5}.error{background:#FFF2EF;color:#994B40;border:1px solid #F0C7BE}.metric{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:12px}.metric div{background:#F8FCFE;border:1px solid var(--line);border-radius:12px;padding:12px}.metric b{display:block;font-size:18px;margin-top:4px}.out{margin-top:12px;white-space:pre-wrap;font-size:12px;line-height:1.7;background:#0F2737;color:#EAF7FC;border-radius:14px;padding:14px;max-height:560px;overflow:auto}.downloads{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}.dl{border:1px solid var(--line);background:#fff;color:var(--blue2);border-radius:10px;padding:9px 12px;font-weight:900;cursor:pointer}@media(max-width:700px){.row,.metric{grid-template-columns:1fr}.title{font-size:24px}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP","Yu Gothic",sans-serif}.wrap{max-width:920px;margin:auto;padding:24px 18px 48px}.hero{background:linear-gradient(135deg,#0f73ad,#168bcb);color:#fff;border-radius:22px;padding:24px 22px;box-shadow:var(--shadow)}.kicker{font-size:11px;letter-spacing:.12em;font-weight:900;opacity:.82}.title{font-size:28px;font-weight:900;margin-top:6px}.sub{margin-top:8px;font-size:13px;line-height:1.65;opacity:.95}.card{margin-top:16px;background:#fff;border:1px solid var(--line);border-radius:18px;padding:18px;box-shadow:var(--shadow)}label{font-size:12px;font-weight:900;color:var(--blue2)}.file{width:100%;padding:12px;margin-top:8px;border:1px dashed #9fc9dc;border-radius:14px;background:#F8FCFE}.row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:14px}.field{border:1px solid var(--line);border-radius:12px;padding:10px}.field input,.field select{width:100%;margin-top:7px;border:1px solid var(--line);border-radius:8px;padding:8px;font:inherit;font-size:12px}.btn{width:100%;height:48px;margin-top:14px;border:0;border-radius:13px;background:var(--blue);color:#fff;font-weight:900;cursor:pointer}.btn:disabled{opacity:.55;cursor:not-allowed}.status{margin-top:12px;padding:11px 12px;border-radius:12px;background:#F2F8FB;color:#557382;font-size:12px;line-height:1.6}.progress{margin-top:10px;height:12px;border-radius:999px;background:#E6F0F5;overflow:hidden}.progressBar{height:100%;width:0;background:var(--blue);transition:width .25s ease}.progressText{margin-top:6px;font-size:12px;font-weight:800;color:var(--blue2)}.ok{background:#F0FFF3;color:#367947;border:1px solid #BDE3C5}.error{background:#FFF2EF;color:#994B40;border:1px solid #F0C7BE}.metric{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:12px}.metric div{background:#F8FCFE;border:1px solid var(--line);border-radius:12px;padding:12px}.metric b{display:block;font-size:18px;margin-top:4px}.out{margin-top:12px;white-space:pre-wrap;font-size:12px;line-height:1.7;background:#0F2737;color:#EAF7FC;border-radius:14px;padding:14px;max-height:560px;overflow:auto}.downloads{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}.dl{border:1px solid var(--line);background:#fff;color:var(--blue2);border-radius:10px;padding:9px 12px;font-weight:900;cursor:pointer}@media(max-width:700px){.row,.metric{grid-template-columns:1fr}.title{font-size:24px}}
 </style>
 </head>
 <body>
@@ -28,7 +28,7 @@
   </div>
 
   <button id="run" class="btn" disabled>faster-whisperで文字起こし</button>
-  <div id="status" class="status">待機中</div>
+  <div id="status" class="status">待機中</div><div id="progress" class="progress" style="display:none"><div id="progressBar" class="progressBar"></div></div><div id="progressText" class="progressText" style="display:none"></div>
   <div id="metrics" class="metric" style="display:none"></div>
 </section>
 
@@ -44,7 +44,7 @@
 <script>
 const $ = id => document.getElementById(id);
 const audio = $("audio"), run = $("run"), status = $("status"), output = $("output"), metrics = $("metrics");
-let lastOutput = "";
+let lastOutput = "";\nlet progressTimer = null;
 
 audio.addEventListener("change", () => {
   run.disabled = !(audio.files && audio.files[0]);
@@ -67,26 +67,35 @@ async function waitHealth(){
 }
 waitHealth();
 
-let progressTimer = null;
 function startProgress(){
-  const started = performance.now();
-  let preparingShown = false;
+  $("progress").style.display = "block";
+  $("progressText").style.display = "block";
+  $("progressBar").style.width = "0%";
+  $("progressText").textContent = "準備中…";
   progressTimer = setInterval(async () => {
     try{
-      const r = await fetch("/api/health");
+      const r = await fetch("/api/progress");
       const d = await r.json();
-      const sec = Math.floor((performance.now() - started) / 1000);
-      if(d.loaded){
-        setStatus("モデル準備完了。文字起こし中… " + sec + "秒");
-      }else{
-        preparingShown = true;
-        setStatus("モデル準備中… " + sec + "秒（初回のみ）");
+      const pct = Math.max(0, Math.min(100, Number(d.percent || 0)));
+      $("progressBar").style.width = pct + "%";
+      if(d.phase === "model"){
+        setStatus("モデル準備中… 初回のみ時間がかかります。");
+        $("progressText").textContent = "モデル準備中…";
+      }else if(d.phase === "transcribing"){
+        setStatus("文字起こし中…");
+        const done = d.duration > 0 ? Math.floor(d.processed) : 0;
+        const total = d.duration > 0 ? Math.floor(d.duration) : 0;
+        $("progressText").textContent =
+          "処理進捗 " + pct + "% 　" +
+          Math.floor(done / 60).toString().padStart(2,"0") + ":" +
+          String(done % 60).padStart(2,"0") + " / " +
+          Math.floor(total / 60).toString().padStart(2,"0") + ":" +
+          String(total % 60).padStart(2,"0");
+      }else if(d.phase === "error"){
+        setStatus(d.message || "処理に失敗しました。","error");
       }
-    }catch(_){
-      const sec = Math.floor((performance.now() - started) / 1000);
-      if(!preparingShown) setStatus("モデルを起動中… " + sec + "秒");
-    }
-  }, 1000);
+    }catch(_){}
+  }, 500);
 }
 function stopProgress(){
   if(progressTimer) clearInterval(progressTimer);
@@ -125,7 +134,7 @@ run.addEventListener("click", async () => {
       "<div>速度<b>" + d.speed.toFixed(2) + "倍速</b></div>" +
       "<div>Batch<b>" + d.batch_size + "</b></div>";
 
-    setStatus("完了。音声 " + (d.audio_duration/60).toFixed(1) + "分を " + d.elapsed.toFixed(1) + "秒で処理。", "ok");
+    setStatus("完了。文字起こしが最後まで終わりました。", "ok");\n    $("progressBar").style.width = "100%";\n    $("progressText").textContent = "処理進捗 100%　完了";
     console.log("Browser request elapsed:", ((performance.now()-started)/1000).toFixed(2), "s");
   }catch(e){
     setStatus("処理に失敗しました：" + e.message, "error");
