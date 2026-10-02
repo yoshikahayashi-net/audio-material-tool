@@ -16,7 +16,49 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Check JavaScript syntax
+        run: |
+          node --check app.js
+          sed '1d' audio-worker.js > /tmp/audio-worker-check.js
+          node --check /tmp/audio-worker-check.js
+
+      - name: Check required files
+        run: |
+          test -f index.html
+          test -f app.js
+          test -f audio-worker.js
+
+      - name: Check critical runtime references
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+
+          const app = fs.readFileSync('app.js', 'utf8');
+          const worker = fs.readFileSync('audio-worker.js', 'utf8');
+
+          if (!/new Worker\("\.\/audio-worker\.js\?v=/.test(app)) {
+            throw new Error('app.js does not reference the versioned audio-worker.js');
+          }
+
+          if (/useWebGPU/.test(worker) && !/const\s+useWebGPU\s*=/.test(worker)) {
+            throw new Error('audio-worker.js references useWebGPU without declaring it');
+          }
+
+          if (!/index\.html/.test(fs.readFileSync('index.html', 'utf8'))) {
+            throw new Error('index.html is missing expected HTML content');
+          }
+
+          console.log('Critical runtime checks passed.');
+          NODE
+
   deploy:
+    needs: test
     runs-on: ubuntu-latest
     environment:
       name: github-pages
