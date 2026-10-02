@@ -44,7 +44,8 @@
 <script>
 const $ = id => document.getElementById(id);
 const audio = $("audio"), run = $("run"), status = $("status"), output = $("output"), metrics = $("metrics");
-let lastOutput = "";\nlet progressTimer = null;
+let lastOutput = "";
+let progressTimer = null;
 
 audio.addEventListener("change", () => {
   run.disabled = !(audio.files && audio.files[0]);
@@ -134,7 +135,9 @@ run.addEventListener("click", async () => {
       "<div>速度<b>" + d.speed.toFixed(2) + "倍速</b></div>" +
       "<div>Batch<b>" + d.batch_size + "</b></div>";
 
-    setStatus("完了。文字起こしが最後まで終わりました。", "ok");\n    $("progressBar").style.width = "100%";\n    $("progressText").textContent = "処理進捗 100%　完了";
+    setStatus("完了。文字起こしが最後まで終わりました。", "ok");
+    $("progressBar").style.width = "100%";
+    $("progressText").textContent = "処理進捗 100%　完了";
     console.log("Browser request elapsed:", ((performance.now()-started)/1000).toFixed(2), "s");
   }catch(e){
     setStatus("処理に失敗しました：" + e.message, "error");
