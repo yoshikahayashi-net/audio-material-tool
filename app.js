@@ -71,7 +71,7 @@ fileInput.addEventListener("change", function() {
 
 function getWorker() {
   if (worker) return worker;
-  worker = new Worker("./audio-worker.js?v=20261002-01", { type: "module" });
+  worker = new Worker("./audio-worker.js?v=20261002-02", { type: "module" });
   return worker;
 }
 
@@ -317,8 +317,12 @@ runBtn.addEventListener("click", async function() {
   results.style.display = "none";
   setProgress(0);
   processingStartedAt = performance.now();
+  let decodeElapsed = 0;
+  let transcriptionElapsed = 0;
   try {
+    const decodeStartedAt = performance.now();
     const audio = await decodeTo16k(file);
+    decodeElapsed = performance.now() - decodeStartedAt;
     const duration = audio.duration;
     const sampleRate = 16000;
     const chunkSeconds = 30;
@@ -332,7 +336,9 @@ runBtn.addEventListener("click", async function() {
     setChunkProgress(0, totalChunks);
     setProcessing(true);
 
+    const transcriptionStartedAt = performance.now();
     const segments = await transcribeWithWorker(audio);
+    transcriptionElapsed = performance.now() - transcriptionStartedAt;
 
     let rawText = "";
     for (const seg of segments) {
@@ -357,7 +363,17 @@ runBtn.addEventListener("click", async function() {
     lastGroups = groups;
 
     const totalSeconds = Math.max(0, Math.round((performance.now() - processingStartedAt) / 1000));
-    const elapsedLabel = Math.floor(totalSeconds / 60) + "分 " + String(totalSeconds % 60).padStart(2, "0") + "秒";
+    const totalLabel = Math.floor(totalSeconds / 60) + "分 " + String(totalSeconds % 60).padStart(2, "0") + "秒";
+    const decodeSeconds = decodeElapsed / 1000;
+    const transcriptionSeconds = transcriptionElapsed / 1000;
+    const audioSeconds = Math.max(1, duration);
+    const rtf = transcriptionSeconds / audioSeconds;
+    const realtimeFactor = isFinite(rtf) ? rtf : 0;
+    const speedMultiplier = realtimeFactor > 0 ? 1 / realtimeFactor : 0;
+    const transcribeLabel = Math.floor(transcriptionSeconds / 60) + "分 " + String(Math.round(transcriptionSeconds % 60)).padStart(2, "0") + "秒";
+    const speedLabel = speedMultiplier >= 1
+      ? "約 " + speedMultiplier.toFixed(1) + "倍速"
+      : "実時間の " + Math.round(realtimeFactor * 100) + "%";
 
     const timedRaw = segments.length
       ? segments.map(formatSegment).join("\n")
@@ -368,11 +384,18 @@ runBtn.addEventListener("click", async function() {
     outputs.shot = groups.shot.length ? groups.shot.map(formatSegment).join("\n") : "（該当内容なし）";
     outputs.unknown = groups.unknown.length ? groups.unknown.map(formatSegment).join("\n") : "（該当内容なし）";
     outputs.all = buildText(groups, raw) +
-      "\n\n【処理時間】\n" + elapsedLabel;
+      "\n\n【処理時間】\n総合：" + totalLabel +
+      "\n音声読み込み・変換：" + decodeSeconds.toFixed(1) + "秒" +
+      "\n文字起こし：" + transcribeLabel +
+      "\n文字起こし速度：" + speedLabel +
+      "（実時間比 " + realtimeFactor.toFixed(2) + "）";
     render();
     results.style.display = "block";
     setProgress(100);
-    setStatus("⑤ 完了。音声 " + totalChunks + "区間を資料化しました。処理時間 " + elapsedLabel + " ／ 仕上 " + groups.finish.length + "件 ／ ショット " + groups.shot.length + "件 ／ 未分類 " + groups.unknown.length + "件", "ok");
+    setStatus("⑤ 完了。音声 " + totalChunks + "区間を資料化しました。総合 " + totalLabel +
+      " ／ 文字起こし " + transcribeLabel + "・" + speedLabel +
+      " ／ 仕上 " + groups.finish.length + "件 ／ ショット " + groups.shot.length +
+      "件 ／ 未分類 " + groups.unknown.length + "件", "ok");
   } catch (err) {
         setProcessing(false);
     console.error(err);
