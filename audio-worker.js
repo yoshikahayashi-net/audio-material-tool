@@ -5,12 +5,6 @@ env.allowRemoteModels = true;
 env.useBrowserCache = true;
 
 const MODEL = "onnx-community/kotoba-whisper-v2.2-ONNX";
-const LANGUAGE = "japanese";
-const TASK = "transcribe";
-const CHUNK_SECONDS = 30;
-const OVERLAP_SECONDS = 1;
-const WEBGPU_BATCH_SIZE = 1;
-const MAX_NEW_TOKENS = 256;
 let transcriber = null;
 
 function send(type, payload) {
@@ -28,9 +22,7 @@ async function getTranscriber() {
   const make = async (device) => {
     return await pipeline("automatic-speech-recognition", MODEL, {
       device,
-      dtype: device === "webgpu"
-        ? { encoder_model: "fp16", decoder_model_merged: "fp16" }
-        : "q8",
+      dtype: device === "webgpu" ? { encoder_model: "fp16", decoder_model_merged: "q4f16" } : "q8",
       progress_callback: function(p) {
         if (!p) return;
         if (p.status === "progress" && typeof p.progress === "number") {
@@ -66,8 +58,8 @@ self.onmessage = async function(event) {
     const sampleRate = data.sampleRate || 16000;
     const audio = new Float32Array(data.audio);
     const useWebGPU = !!(self.navigator && self.navigator.gpu);
-    const chunkSeconds = CHUNK_SECONDS;
-    const overlapSeconds = OVERLAP_SECONDS;
+    const chunkSeconds = 30;
+    const overlapSeconds = 2;
     const chunkSamples = chunkSeconds * sampleRate;
     const overlapSamples = overlapSeconds * sampleRate;
     const stepSamples = chunkSamples - overlapSamples;
@@ -77,35 +69,7 @@ self.onmessage = async function(event) {
     );
 
     const segments = [];
-    const BATCH_SIZE = useWebGPU ? WEBGPU_BATCH_SIZE : 1;
-
-    // Near-digital silence is skipped entirely. This is intentionally
-    // conservative so quiet speech is not discarded.
-    function isSilence(buffer) {
-      let sumSq = 0;
-      let peak = 0;
-      const stride = Math.max(1, Math.floor(buffer.length / 4096));
-      let count = 0;
-      for (let i = 0; i < buffer.length; i += stride) {
-        const v = buffer[i];
-        const a = Math.abs(v);
-        if (a > peak) peak = a;
-        sumSq += v * v;
-        count++;
-      }
-      const rms = Math.sqrt(sumSq / Math.max(1, count));
-      return rms < 0.001 && peak < 0.01;
-    }
-
-    const inferenceOptions = {
-      return_timestamps: false,
-      language: LANGUAGE,
-      task: TASK,
-      max_new_tokens: MAX_NEW_TOKENS,
-      repetition_penalty: 1.05,
-      no_repeat_ngram_size: 3,
-      renormalize_logits: true
-    };
+    const BATCH_SIZE = useWebGPU ? 2 : 1;
 
     for (let batchStart = 0; batchStart < totalChunks; batchStart += BATCH_SIZE) {
       const inputs = [];
@@ -115,10 +79,7 @@ self.onmessage = async function(event) {
       for (let i = batchStart; i < batchEnd; i++) {
         const startSample = i * stepSamples;
         const endSample = Math.min(audio.length, startSample + chunkSamples);
-        const chunk = audio.slice(startSample, endSample);
-        if (isSilence(chunk)) continue;
-
-        inputs.push(chunk);
+        inputs.push(audio.slice(startSample, endSample));
         meta.push({
           index: i,
           start: startSample / sampleRate,
@@ -132,18 +93,20 @@ self.onmessage = async function(event) {
         batchEnd
       });
 
-      let parts = [];
+      let parts;
       try {
-        if (inputs.length > 0) {
-          parts = await pipe(inputs, inferenceOptions);
-        }
+        parts = await pipe(inputs, {
+          return_timestamps: false
+        });
       } catch (batchError) {
         send("batch-fallback", {
           message: "GPUの同時処理に対応できないため、1区間ずつ処理します。"
         });
         parts = [];
         for (const input of inputs) {
-          parts.push(await pipe(input, inferenceOptions));
+          parts.push(await pipe(input, {
+            return_timestamps: false
+          }));
         }
       }
 
