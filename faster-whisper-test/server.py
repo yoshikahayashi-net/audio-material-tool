@@ -155,6 +155,10 @@ def transcribe():
         audio.save(temp_path)
         _, batched_model, device, compute_type = load_model()
 
+        # Keep CPU mode lightweight. Batching is reserved for GPU runs.
+        if device == "CPU":
+            batch_size = 1
+
         started = time.perf_counter()
         segments, info = batched_model.transcribe(
             str(temp_path),
