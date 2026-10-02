@@ -31,7 +31,7 @@
     <button id="runBtn" class="btn" disabled>資料化を開始</button>
     <div id="status" class="status">待機中です。</div>
     <div class="progress"><div id="bar" class="bar"></div></div>
-    <div class="note">初回だけWhisperモデルをブラウザが自動ダウンロードします。以後はブラウザキャッシュを利用します。音声ファイルはこの処理のために外部APIへ送信しません。</div>
+    <div class="note">初回だけWhisperモデルをブラウザが自動ダウンロードします。以後はブラウザキャッシュを利用します。WebGPUが使える環境では複数区間を同時処理し、対応できない環境では自動で1区間ずつ処理します。音声ファイルは外部APIへ送信しません。</div>
   </section>
 
   <section id="results" class="card results">
@@ -51,6 +51,6 @@
     </div>
   </section>
 </div>
-<script type="module" src="./app.js?v=20261001-18"></script>
+<script type="module" src="./app.js?v=20261002-01"></script>
 </body>
 </html>
