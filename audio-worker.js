@@ -68,12 +68,19 @@ self.onmessage = async function(event) {
     );
 
     const segments = [];
-    const BATCH_SIZE = 1;
+    // WebGPUが使える場合だけ2区間を同時処理する。
+    // 最初のバッチで対応できない環境は、その後ずっと1区間に切り替える。
+    let batchSize = useWebGPU ? 2 : 1;
+    const inferenceOptions = {
+      return_timestamps: false,
+      language: "japanese",
+      task: "transcribe"
+    };
 
-    for (let batchStart = 0; batchStart < totalChunks; batchStart += BATCH_SIZE) {
+    for (let batchStart = 0; batchStart < totalChunks; batchStart += batchSize) {
       const inputs = [];
       const meta = [];
-      const batchEnd = Math.min(totalChunks, batchStart + BATCH_SIZE);
+      const batchEnd = Math.min(totalChunks, batchStart + batchSize);
 
       for (let i = batchStart; i < batchEnd; i++) {
         const startSample = i * stepSamples;
@@ -89,27 +96,24 @@ self.onmessage = async function(event) {
       send("batch-start", {
         done: batchStart,
         total: totalChunks,
-        batchEnd
+        batchEnd,
+        batchSize,
+        actualCount: inputs.length
       });
 
       let parts;
       try {
-        parts = await pipe(inputs, {
-          return_timestamps: false,
-          language: "japanese",
-          task: "transcribe"
-        });
+        parts = await pipe(inputs, inferenceOptions);
       } catch (batchError) {
-        send("batch-fallback", {
-          message: "GPUの同時処理に対応できないため、1区間ずつ処理します。"
-        });
+        if (batchSize > 1) {
+          batchSize = 1;
+          send("batch-fallback", {
+            message: "このPCでは同時処理が安定しないため、以降は1区間ずつ処理します。"
+          });
+        }
         parts = [];
         for (const input of inputs) {
-          parts.push(await pipe(input, {
-            return_timestamps: false,
-            language: "japanese",
-            task: "transcribe"
-          }));
+          parts.push(await pipe(input, inferenceOptions));
         }
       }
 
@@ -128,7 +132,9 @@ self.onmessage = async function(event) {
 
       send("batch-done", {
         done: batchEnd,
-        total: totalChunks
+        total: totalChunks,
+        batchSize,
+        actualCount: inputs.length
       });
     }
 
