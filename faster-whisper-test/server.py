@@ -190,10 +190,8 @@ def transcribe():
         set_progress("model", 0, 0, 0, "モデル準備中…")
         _, batched_model, device, compute_type = load_model()
 
-        # Keep CPU mode lightweight. Batching is reserved for GPU runs.
-        if device == "CPU":
-            batch_size = 1
-
+        # Use the selected batch size on CPU too.
+        # Batch 4 is the standard setting; Batch 8 is the high-speed/high-load setting.
         started = time.perf_counter()
         segments, info = batched_model.transcribe(
             str(temp_path),
