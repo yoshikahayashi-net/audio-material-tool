@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>faster-whisper 比較版</title>
+<style>
+:root{--blue:#168BCB;--blue2:#0D6DA6;--sky:#EAF9FE;--green:#50C36A;--ink:#173244;--muted:#6B8090;--line:#CFE3ED;--bg:#F3FAFD;--shadow:0 12px 30px rgba(18,91,125,.12)}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP","Yu Gothic",sans-serif}.wrap{max-width:920px;margin:auto;padding:24px 18px 48px}.hero{background:linear-gradient(135deg,#0f73ad,#168bcb);color:#fff;border-radius:22px;padding:24px 22px;box-shadow:var(--shadow)}.kicker{font-size:11px;letter-spacing:.12em;font-weight:900;opacity:.82}.title{font-size:28px;font-weight:900;margin-top:6px}.sub{margin-top:8px;font-size:13px;line-height:1.65;opacity:.95}.card{margin-top:16px;background:#fff;border:1px solid var(--line);border-radius:18px;padding:18px;box-shadow:var(--shadow)}label{font-size:12px;font-weight:900;color:var(--blue2)}.file{width:100%;padding:12px;margin-top:8px;border:1px dashed #9fc9dc;border-radius:14px;background:#F8FCFE}.row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:14px}.field{border:1px solid var(--line);border-radius:12px;padding:10px}.field input,.field select{width:100%;margin-top:7px;border:1px solid var(--line);border-radius:8px;padding:8px;font:inherit;font-size:12px}.btn{width:100%;height:48px;margin-top:14px;border:0;border-radius:13px;background:var(--blue);color:#fff;font-weight:900;cursor:pointer}.btn:disabled{opacity:.55;cursor:not-allowed}.status{margin-top:12px;padding:11px 12px;border-radius:12px;background:#F2F8FB;color:#557382;font-size:12px;line-height:1.6}.ok{background:#F0FFF3;color:#367947;border:1px solid #BDE3C5}.error{background:#FFF2EF;color:#994B40;border:1px solid #F0C7BE}.metric{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:12px}.metric div{background:#F8FCFE;border:1px solid var(--line);border-radius:12px;padding:12px}.metric b{display:block;font-size:18px;margin-top:4px}.out{margin-top:12px;white-space:pre-wrap;font-size:12px;line-height:1.7;background:#0F2737;color:#EAF7FC;border-radius:14px;padding:14px;max-height:560px;overflow:auto}.downloads{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}.dl{border:1px solid var(--line);background:#fff;color:var(--blue2);border-radius:10px;padding:9px 12px;font-weight:900;cursor:pointer}@media(max-width:700px){.row,.metric{grid-template-columns:1fr}.title{font-size:24px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<section class="hero">
+  <div class="kicker">LOCAL FASTER-WHISPER COMPARISON</div>
+  <div class="title">🎙 faster-whisper 比較版</div>
+  <div class="sub">本番版とは分離したローカル実験版。同じ音声を使って、認識結果・速度・実行環境を比較します。</div>
+</section>
+
+<section class="card">
+  <label>音声ファイル</label>
+  <input id="audio" class="file" type="file" accept="audio/*,.wav,.mp3,.m4a,.flac">
+
+  <div class="row">
+    <div class="field"><label>仕上キーワード</label><input id="finish" value="仕上,仕上げ,仕上工程"></div>
+    <div class="field"><label>ショットキーワード</label><input id="shot" value="ショット,ショット工程"></div>
+    <div class="field"><label>Batch</label><select id="batch"><option value="1">1（軽め）</option><option value="4" selected>4（標準）</option><option value="8">8（高速・高負荷）</option></select></div>
+  </div>
+
+  <button id="run" class="btn" disabled>faster-whisperで文字起こし</button>
+  <div id="status" class="status">待機中</div>
+  <div id="metrics" class="metric" style="display:none"></div>
+</section>
+
+<section id="resultCard" class="card" style="display:none">
+  <label>結果</label>
+  <pre id="output" class="out"></pre>
+  <div class="downloads">
+    <button id="txt" class="dl">TXT保存</button>
+  </div>
+</section>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const audio = $("audio"), run = $("run"), status = $("status"), output = $("output"), metrics = $("metrics");
+let lastOutput = "";
+
+audio.addEventListener("change", () => {
+  run.disabled = !(audio.files && audio.files[0]);
+  status.textContent = audio.files && audio.files[0] ? "準備OK。ファイルを送るとローカルで処理します。" : "待機中";
+});
+
+function setStatus(text, kind=""){
+  status.textContent = text;
+  status.className = "status" + (kind ? " " + kind : "");
+}
+
+async function waitHealth(){
+  try{
+    const r = await fetch("/api/health");
+    const d = await r.json();
+    if(d.loaded) setStatus("モデル準備済み：" + d.device + " / " + d.compute_type, "ok");
+  }catch(_){}
+}
+waitHealth();
+
+run.addEventListener("click", async () => {
+  const file = audio.files[0];
+  if(!file) return;
+
+  run.disabled = true;
+  setStatus("faster-whisperで処理中… 初回はモデル準備に時間がかかります。");
+  const form = new FormData();
+  form.append("audio", file);
+  form.append("finish_keywords", $("finish").value);
+  form.append("shot_keywords", $("shot").value);
+  form.append("batch_size", $("batch").value);
+
+  const started = performance.now();
+  try{
+    const r = await fetch("/api/transcribe", {method:"POST", body:form});
+    const d = await r.json();
+    if(!r.ok || !d.ok) throw new Error(d.error || "文字起こしに失敗しました。");
+
+    lastOutput = d.output;
+    output.textContent = d.output;
+    $("resultCard").style.display = "block";
+
+    const mins = Math.floor(d.elapsed / 60);
+    const secs = String(Math.round(d.elapsed % 60)).padStart(2,"0");
+    metrics.style.display = "grid";
+    metrics.innerHTML =
+      "<div>実行環境<b>" + d.device + "</b></div>" +
+      "<div>処理時間<b>" + mins + "分 " + secs + "秒</b></div>" +
+      "<div>速度<b>" + d.speed.toFixed(2) + "倍速</b></div>" +
+      "<div>Batch<b>" + d.batch_size + "</b></div>";
+
+    setStatus("完了。音声 " + (d.audio_duration/60).toFixed(1) + "分を " + d.elapsed.toFixed(1) + "秒で処理。", "ok");
+    console.log("Browser request elapsed:", ((performance.now()-started)/1000).toFixed(2), "s");
+  }catch(e){
+    setStatus("処理に失敗しました：" + e.message, "error");
+  }finally{
+    run.disabled = false;
+  }
+});
+
+$("txt").addEventListener("click", () => {
+  if(!lastOutput) return;
+  const blob = new Blob([lastOutput], {type:"text/plain;charset=utf-8"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "faster-whisper_audio_material.txt";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+});
+</script>
+</body>
+</html>
