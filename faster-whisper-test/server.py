@@ -21,11 +21,18 @@ _model = None
 _batched_model = None
 _device = None
 _compute_type = None
+_loading = False
+_load_error = None
 
 def load_model():
-    global _model, _batched_model, _device, _compute_type
+    global _model, _batched_model, _device, _compute_type, _loading, _load_error
     if _model is not None:
         return _model, _batched_model, _device, _compute_type
+
+    _loading = True
+    _load_error = None
+    _device = "準備中"
+    _compute_type = None
 
     # Prefer GPU. If the local CUDA/cuDNN stack is unavailable,
     # fall back to a bounded-thread CPU mode so the desktop stays usable.
@@ -51,6 +58,7 @@ def load_model():
         _compute_type = "int8"
 
     _batched_model = BatchedInferencePipeline(model=_model)
+    _loading = False
     return _model, _batched_model, _device, _compute_type
 
 
@@ -129,8 +137,10 @@ def health():
         "ok": True,
         "model": MODEL_NAME,
         "loaded": _model is not None,
+        "loading": _loading,
         "device": _device,
         "compute_type": _compute_type,
+        "error": _load_error,
     })
 
 
