@@ -69,17 +69,52 @@ self.onmessage = async function(event) {
     );
 
     const segments = [];
-    const BATCH_SIZE = useWebGPU ? 2 : 1;
+    let batchSize = useWebGPU ? 2 : 1;
 
-    for (let batchStart = 0; batchStart < totalChunks; batchStart += BATCH_SIZE) {
+    // 日本語音声での言語判定を毎区間やり直さないよう固定する。
+    const inferenceOptions = {
+      return_timestamps: false,
+      language: "japanese",
+      task: "transcribe"
+    };
+
+    // 無音に近い区間は推論そのものをスキップする。
+    // 閾値はかなり保守的にして、通常の小さな声を落としにくくする。
+    function isSilence(buffer) {
+      let sumSq = 0;
+      let peak = 0;
+      const stride = Math.max(1, Math.floor(buffer.length / 4096));
+      let count = 0;
+
+      for (let i = 0; i < buffer.length; i += stride) {
+        const v = buffer[i];
+        const a = Math.abs(v);
+        if (a > peak) peak = a;
+        sumSq += v * v;
+        count++;
+      }
+
+      const rms = Math.sqrt(sumSq / Math.max(1, count));
+      return rms < 0.001 && peak < 0.01;
+    }
+
+    for (let batchStart = 0; batchStart < totalChunks; batchStart += batchSize) {
       const inputs = [];
       const meta = [];
-      const batchEnd = Math.min(totalChunks, batchStart + BATCH_SIZE);
+      const batchEnd = Math.min(totalChunks, batchStart + batchSize);
+      let skipped = 0;
 
       for (let i = batchStart; i < batchEnd; i++) {
         const startSample = i * stepSamples;
         const endSample = Math.min(audio.length, startSample + chunkSamples);
-        inputs.push(audio.slice(startSample, endSample));
+        const chunk = audio.slice(startSample, endSample);
+
+        if (isSilence(chunk)) {
+          skipped++;
+          continue;
+        }
+
+        inputs.push(chunk);
         meta.push({
           index: i,
           start: startSample / sampleRate,
@@ -90,23 +125,29 @@ self.onmessage = async function(event) {
       send("batch-start", {
         done: batchStart,
         total: totalChunks,
-        batchEnd
+        batchEnd,
+        batchSize,
+        skipped,
+        actualCount: inputs.length
       });
 
-      let parts;
-      try {
-        parts = await pipe(inputs, {
-          return_timestamps: false
-        });
-      } catch (batchError) {
-        send("batch-fallback", {
-          message: "GPUの同時処理に対応できないため、1区間ずつ処理します。"
-        });
-        parts = [];
-        for (const input of inputs) {
-          parts.push(await pipe(input, {
-            return_timestamps: false
-          }));
+      let parts = [];
+      if (inputs.length > 0) {
+        try {
+          parts = await pipe(inputs, inferenceOptions);
+        } catch (batchError) {
+          // 一度でもバッチ実行に失敗した環境では、それ以降のバッチも
+          // 毎回例外を起こしてからフォールバックする必要はない。
+          if (batchSize > 1) {
+            batchSize = 1;
+            send("batch-fallback", {
+              message: "GPUの同時処理に対応できなかったため、以降は1区間ずつ処理します。"
+            });
+          }
+          parts = [];
+          for (const input of inputs) {
+            parts.push(await pipe(input, inferenceOptions));
+          }
         }
       }
 
@@ -125,7 +166,10 @@ self.onmessage = async function(event) {
 
       send("batch-done", {
         done: batchEnd,
-        total: totalChunks
+        total: totalChunks,
+        skipped,
+        batchSize,
+        actualCount: inputs.length
       });
     }
 
