@@ -57,9 +57,14 @@ def load_model():
         _device = "CPU"
         _compute_type = "int8"
 
-    _batched_model = BatchedInferencePipeline(model=_model)
-    _loading = False
-    return _model, _batched_model, _device, _compute_type
+    try:
+        _batched_model = BatchedInferencePipeline(model=_model)
+        _loading = False
+        return _model, _batched_model, _device, _compute_type
+    except Exception as exc:
+        _loading = False
+        _load_error = f"{type(exc).__name__}: {exc}"
+        raise
 
 
 def normalize(text: str) -> str:
