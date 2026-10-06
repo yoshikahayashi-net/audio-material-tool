@@ -137,7 +137,7 @@ def build_output(groups, raw, elapsed, audio_duration, device, compute_type, bat
         f"エンジン：faster-whisper / {MODEL_NAME}",
         f"実行：{device} / {compute_type}",
         f"Batch：{batch_size}",
-        f"速度設定：{"高速" if batch_size >= 4 else "標準"}",
+        f"速度設定：{'高速' if batch_size >= 4 else '標準'}",
         f"CPUスレッド：{CPU_THREADS}",
         f"音声長：{audio_duration:.1f}秒",
         f"文字起こし：{elapsed:.1f}秒",
