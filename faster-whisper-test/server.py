@@ -137,6 +137,7 @@ def build_output(groups, raw, elapsed, audio_duration, device, compute_type, bat
         f"エンジン：faster-whisper / {MODEL_NAME}",
         f"実行：{device} / {compute_type}",
         f"Batch：{batch_size}",
+        f"速度設定：{"高速" if batch_size >= 4 else "標準"}",
         f"CPUスレッド：{CPU_THREADS}",
         f"音声長：{audio_duration:.1f}秒",
         f"文字起こし：{elapsed:.1f}秒",
@@ -196,14 +197,19 @@ def transcribe():
         if device == "CPU":
             batch_size = min(batch_size, 4)
         started = time.perf_counter()
+        # Speed profile: keep the lightweight modes conservative,
+        # while Batch 4 uses greedy decoding and independent windows.
+        fast_mode = batch_size >= 4
         segments, info = batched_model.transcribe(
             str(temp_path),
             batch_size=batch_size,
             language="ja",
             task="transcribe",
-            beam_size=5,
+            beam_size=1 if fast_mode else 5,
+            best_of=1 if fast_mode else 5,
+            temperature=0.0,
             vad_filter=True,
-            condition_on_previous_text=True,
+            condition_on_previous_text=False if fast_mode else True,
         )
 
         total_duration = float(info.duration or 0)
